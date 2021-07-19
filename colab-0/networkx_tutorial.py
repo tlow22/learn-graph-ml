@@ -1,3 +1,10 @@
+# ==============================================================================
+# This script will simply walk through using networkx to 
+#     - create a graph
+#     - add nodes and edges
+#     - visualize/print out the graph in terminal 
+#     - demonstrate a pagerank example 
+# ==============================================================================
 import networkx as nx
 
 # Create graph objects  

@@ -1,3 +1,8 @@
+# ==============================================================================
+# This script will import a dataset from Pytorch Geometric and visualize it via 
+# networkx and matplotlib.
+# ==============================================================================
+
 from networkx.algorithms import coloring
 from torch_geometric.datasets import KarateClub
 from torch_geometric.utils import to_networkx 
@@ -5,6 +10,7 @@ from matplotlib import cm
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
+
 # ==============================================================================
 # HELPER FUNCTIONS 
 # ==============================================================================
@@ -30,6 +36,10 @@ def visualize(h, color, epoch=None, loss=None):
 
     plt.show() 
 
+# ==============================================================================
+# MAIN SCRIPT 
+# ==============================================================================
+# import Zach Karate Club dataset
 dataset = KarateClub()
 print(f'Dataset: {dataset}:')
 print('======================')
@@ -51,6 +61,6 @@ print(f'Contains isolated nodes: {data.contains_isolated_nodes()}')
 print(f'Contains self-loops: {data.contains_self_loops()}')
 print(f'Is undirected: {data.is_undirected()}')
 
-# convert PyG to networkx graph
+# convert PyG to networkx graph and visualize it 
 G = to_networkx(data, to_undirected=True)
 visualize(G, color=data.y)
