@@ -1,15 +1,23 @@
 # ==============================================================================
-# This script will import a dataset from Pytorch Geometric and visualize it via 
-# networkx and matplotlib.
+# This script will 
+#   - import a dataset from Pytorch Geometric and visualize it via 
+#     networkx and matplotlib.
+#   - define a graph convolutional model with Pytorch Geometric.
+#   - train the model on the data.
 # ==============================================================================
+import torch
+import networkx as nx
+import matplotlib.pyplot as plt
+import torch 
+import time
 
 from networkx.algorithms import coloring
 from torch_geometric.datasets import KarateClub
 from torch_geometric.utils import to_networkx 
 from matplotlib import cm
-import torch
-import networkx as nx
-import matplotlib.pyplot as plt
+from torch.nn import Linear
+from torch_geometric.nn import GCNConv
+
 
 # ==============================================================================
 # HELPER FUNCTIONS 
@@ -33,11 +41,10 @@ def visualize(h, color, epoch=None, loss=None):
                          with_labels=False,
                          node_color=color,
                          cmap="Set2")
-
     plt.show() 
 
 # ==============================================================================
-# MAIN SCRIPT 
+# MAIN SCRIPT Part I: Import and visualize graph dataset 
 # ==============================================================================
 # import Zach Karate Club dataset
 dataset = KarateClub()
@@ -64,3 +71,60 @@ print(f'Is undirected: {data.is_undirected()}')
 # convert PyG to networkx graph and visualize it 
 G = to_networkx(data, to_undirected=True)
 visualize(G, color=data.y)
+
+# ==============================================================================
+# MAIN SCRIPT Part II: Perform training 
+# ==============================================================================
+# define a graph convolutional network class 
+class GCN(torch.nn.Module): 
+    # define 3 stacks of graph convolutional layers which maps 
+    # input features --> 4 --> 4 --> 2
+    def __init__(self):
+        super(GCN, self).__init__()
+        torch.manual_seed(12345)
+        self.conv1 = GCNConv(dataset.num_features, 4)
+        self.conv2 = GCNConv(4, 4) # notice the matrix multiplication chaining in sizes
+        self.conv3 = GCNConv(4, 2)
+        self.classifier = Linear(2, dataset.num_classes)
+
+    # enhance each graph convolutional layer with a 'tanh' non-linearity 
+    def forward(self, x, edge_index):
+        h = self.conv1(x, edge_index)
+        h = h.tanh()
+        h = self.conv2(h, edge_index)
+        h = h.tanh()
+        h = self.conv3(h, edge_index)
+        h = h.tanh()
+
+        # Apply a final (linear) classifier
+        out = self.classifier(h)
+
+        return out, h
+
+# initialize the model and visualize the initial guess. One really cool thing to 
+# note is that graph neural networks have an inductive bias, meaning that even 
+# though the network is not yet trained, our visualize function shows a somewhat 
+# intuitive classification of the nodes in the graph. 
+model = GCN()
+_, h = model(data.x, data.edge_index)
+print(f'Embedding shape: {list(h.shape)}')
+visualize(h, color=data.y)
+
+# define loss, optimizer, and training functions
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+def train(data): 
+    optimizer.zero_grad()
+    out, h = model(data.x, data.edge_index)                                     # single forward pass 
+    loss   = criterion(out, data.y)                                             # compute loss
+    loss.backward()                                                             # backpropagate for gradients
+    optimizer.step()                                                            # update weights
+    return loss, h
+
+# train the model
+epochs = 401
+for epoch in range(epochs):
+    loss, h = train(data)                                                       
+    
+visualize(h, color=data.y, epoch=epoch, loss=loss)
